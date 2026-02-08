@@ -11,6 +11,7 @@ SIMPLIFICADO: Código mais limpo e direto ao ponto.
 """
 
 import os
+import re
 import sys
 import argparse
 from pathlib import Path
@@ -62,8 +63,16 @@ def validate_prompt(prompt_data: dict) -> tuple[bool, list]:
         errors.append("É necessário ter system_prompt ou user_prompt")
 
     # Verifica se há TODOs no prompt (apenas leitura)
-    if isinstance(system_prompt, str) and ("TODO" in system_prompt.upper() or "[TODO]" in system_prompt):
-        errors.append("system_prompt ainda contém TODOs - complete o prompt antes de fazer push")
+    # Só marcar [TODO] ou TODO como marcador de tarefa (TODO:, TODO-, TODO(, etc.)
+    # Evita falso positivo em "Todo/todos/todas" (pt) que viram "TODO" em .upper()
+    if isinstance(system_prompt, str):
+        has_bracket_todo = "[TODO]" in system_prompt
+        # Marcador de tarefa: TODO seguido de : - ( [ ou fim de string (não "Todo passo")
+        has_task_todo = bool(
+            re.search(r"\bTODO\s*([:\-(\[]|$)", system_prompt, re.IGNORECASE)
+        )
+        if has_bracket_todo or has_task_todo:
+            errors.append("system_prompt ainda contém TODOs - complete o prompt antes de fazer push")
 
     return (len(errors) == 0, errors)
 
